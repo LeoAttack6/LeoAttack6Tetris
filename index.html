@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LEONARDO — Tetris de Letras</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-950:#07130d;
+    --bg-900:#0d1f15;
+    --bg-800:#14301f;
+    --card:#122a1b;
+    --card-2:#0f2318;
+    --line:rgba(183,228,199,0.10);
+    --text:#eaf5ee;
+    --muted:#9fc2ac;
+
+    --c-L:#173F2C;
+    --c-E:#22573C;
+    --c-O:#2F7350;
+    --c-N:#3F9468;
+    --c-A:#5CB588;
+    --c-R:#87D2AA;
+    --c-D:#C3ECD3;
+  }
+
+  *{ box-sizing:border-box; }
+
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      radial-gradient(circle at 15% -5%, rgba(135,210,170,0.16), transparent 40%),
+      radial-gradient(circle at 90% 100%, rgba(63,148,104,0.14), transparent 45%),
+      linear-gradient(180deg, var(--bg-950), var(--bg-900) 60%, var(--bg-950));
+    color:var(--text);
+    font-family:'Poppins', sans-serif;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:28px;
+  }
+
+  .rig{
+    display:flex;
+    gap:38px;
+    align-items:flex-start;
+    flex-wrap:wrap;
+    justify-content:center;
+    max-width:900px;
+  }
+
+  .col-left{ display:flex; flex-direction:column; align-items:center; }
+
+  .wordmark{
+    display:flex;
+    gap:2px;
+    margin-bottom:6px;
+    font-family:'Playfair Display', serif;
+    font-weight:700;
+    font-style:italic;
+    font-size:44px;
+    letter-spacing:0.02em;
+  }
+  .wordmark span{
+    text-shadow: 0 0 22px currentColor;
+  }
+
+  .eyebrow{
+    font-size:11.5px;
+    letter-spacing:0.32em;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin-bottom:26px;
+    text-align:center;
+  }
+
+  .board-wrap{
+    position:relative;
+    padding:16px;
+    background:linear-gradient(165deg, var(--card), var(--card-2));
+    border-radius:18px;
+    border:1px solid var(--line);
+    box-shadow: 0 40px 70px -30px rgba(0,0,0,0.75), inset 0 0 0 1px rgba(255,255,255,0.02);
+  }
+
+  .board-wrap::before{
+    content:"";
+    position:absolute;
+    inset:-1px;
+    border-radius:19px;
+    padding:1px;
+    background:linear-gradient(160deg, rgba(135,210,170,0.35), rgba(135,210,170,0) 40%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events:none;
+  }
+
+  canvas{
+    display:block;
+    background: var(--bg-950);
+    border-radius:10px;
+  }
+
+  .pad{
+    margin-bottom:16px;
+    display:grid;
+    grid-template-columns:56px 56px 56px;
+    grid-template-rows:52px 52px;
+    gap:8px;
+    justify-content:center;
+  }
+  .pad-rotate{ grid-column:2; grid-row:1; }
+  .pad-left{ grid-column:1; grid-row:2; }
+  .pad-down{ grid-column:2; grid-row:2; }
+  .pad-right{ grid-column:3; grid-row:2; }
+  .pad-drop{ grid-column:3; grid-row:1; }
+
+  .pad-btn{
+    width:100%;
+    height:100%;
+    padding:0;
+    border-radius:12px;
+    border:1px solid var(--line);
+    background:linear-gradient(165deg, var(--card), var(--card-2));
+    color:var(--c-R);
+    font-size:22px;
+    line-height:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    box-shadow: 0 8px 18px -10px rgba(0,0,0,0.6);
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    user-select:none;
+  }
+  .pad-btn:active{
+    background:linear-gradient(165deg, var(--c-O), var(--c-N));
+    color:#08160f;
+    transform:translateY(1px);
+  }
+  .pad-drop{ font-size:19px; color:var(--c-D); }
+
+  .side{
+    width:230px;
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+    margin-top:64px;
+  }
+
+  .panel{
+    background:linear-gradient(165deg, var(--card), var(--card-2));
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:16px 18px;
+  }
+
+  .panel h2{
+    margin:0 0 12px;
+    font-family:'Playfair Display', serif;
+    font-style:italic;
+    font-size:17px;
+    letter-spacing:0.02em;
+    color:var(--c-R);
+    font-weight:600;
+  }
+
+  .stat{ display:flex; justify-content:space-between; font-size:14.5px; padding:4px 0; }
+  .stat b{ color:var(--text); font-variant-numeric: tabular-nums; }
+  .stat span{ color:var(--muted); }
+
+  #nextCanvas{
+    display:block;
+    margin:4px auto 8px;
+    background:var(--bg-950);
+    border-radius:8px;
+  }
+
+  .next-letter{
+    text-align:center;
+    font-family:'Playfair Display', serif;
+    font-style:italic;
+    font-size:13px;
+    color:var(--muted);
+  }
+  .next-letter b{ color:var(--c-D); font-size:15px; }
+
+  .controls-list{ font-size:12.5px; line-height:2; color:var(--muted); }
+  .controls-list kbd{
+    background:var(--bg-950);
+    border:1px solid var(--line);
+    border-radius:5px;
+    padding:1px 7px;
+    font-family:inherit;
+    color:var(--c-R);
+    margin-right:6px;
+  }
+
+  button{
+    width:100%;
+    padding:11px;
+    border-radius:10px;
+    border:none;
+    font-family:'Poppins', sans-serif;
+    font-weight:600;
+    font-size:14px;
+    letter-spacing:0.03em;
+    cursor:pointer;
+    background:linear-gradient(160deg, var(--c-N), var(--c-O));
+    color:#08160f;
+    box-shadow:0 10px 20px -10px rgba(63,148,104,0.6);
+    transition:transform 0.08s ease, filter 0.15s ease;
+  }
+  button:hover{ filter:brightness(1.08); }
+  button:active{ transform:translateY(1px); }
+
+  .overlay{
+    position:absolute; inset:16px;
+    background:rgba(7,19,13,0.90);
+    backdrop-filter: blur(3px);
+    border-radius:12px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:14px;
+    text-align:center;
+    padding:24px;
+  }
+  .overlay.hidden{ display:none; }
+  .overlay h2{
+    font-family:'Playfair Display', serif;
+    font-style:italic;
+    font-size:30px;
+    margin:0;
+    color:var(--c-R);
+  }
+  .overlay p{ margin:0; color:var(--muted); font-size:13.5px; max-width:230px; line-height:1.6; }
+  .overlay button{ width:auto; padding:11px 30px; }
+
+  @media (max-width: 660px){
+    .rig{ flex-direction:column; align-items:center; }
+    .side{ width:280px; margin-top:0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="rig">
+  <div class="col-left">
+    <div class="wordmark">
+      <span style="color:var(--c-L)">L</span><span style="color:var(--c-E)">E</span><span style="color:var(--c-O)">O</span><span style="color:var(--c-N)">N</span><span style="color:var(--c-A)">A</span><span style="color:var(--c-R)">R</span><span style="color:var(--c-D)">D</span><span style="color:var(--c-O)">O</span>
+    </div>
+    <div class="eyebrow">Tetris de letras · cada pieza es una letra de tu nombre</div>
+
+    <div class="pad">
+      <button class="pad-btn pad-rotate" id="btnRotate" aria-label="Girar">⟳</button>
+      <button class="pad-btn pad-left" id="btnLeft" aria-label="Izquierda">←</button>
+      <button class="pad-btn pad-down" id="btnDown" aria-label="Bajar">↓</button>
+      <button class="pad-btn pad-right" id="btnRight" aria-label="Derecha">→</button>
+      <button class="pad-btn pad-drop" id="btnDrop" aria-label="Caída total">⇓</button>
+    </div>
+
+    <div class="board-wrap">
+      <canvas id="board" width="200" height="400"></canvas>
+      <div class="overlay" id="overlay">
+        <h2 id="overlayTitle">Arma tu nombre</h2>
+        <p id="overlayText">Las piezas son las letras L·E·O·N·A·R·D·O. Encájalas y completa líneas para sumar puntos.</p>
+        <button id="overlayBtn">Empezar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="side">
+    <div class="panel">
+      <h2>Puntuación</h2>
+      <div class="stat"><span>Puntos</span><b id="score">0</b></div>
+      <div class="stat"><span>Líneas</span><b id="lines">0</b></div>
+      <div class="stat"><span>Nivel</span><b id="level">1</b></div>
+    </div>
+
+    <div class="panel">
+      <h2>Siguiente letra</h2>
+      <canvas id="nextCanvas" width="90" height="105"></canvas>
+      <div class="next-letter">cae después: <b id="nextLetter">—</b></div>
+    </div>
+
+    <div class="panel">
+      <h2>Controles</h2>
+      <div class="controls-list">
+        <div><kbd>←</kbd><kbd>→</kbd> mover</div>
+        <div><kbd>↓</kbd> caída suave</div>
+        <div><kbd>↑</kbd> girar</div>
+        <div><kbd>Espacio</kbd> caída total</div>
+        <div><kbd>P</kbd> pausa</div>
+      </div>
+    </div>
+
+    <button id="pauseBtn">Pausa</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  const COLS = 10, ROWS = 20, CELL = 20;
+  const canvas = document.getElementById('board');
+  const ctx = canvas.getContext('2d');
+  const nextCanvas = document.getElementById('nextCanvas');
+  const nctx = nextCanvas.getContext('2d');
+  const overlay = document.getElementById('overlay');
+  const overlayTitle = document.getElementById('overlayTitle');
+  const overlayText = document.getElementById('overlayText');
+  const overlayBtn = document.getElementById('overlayBtn');
+  const scoreEl = document.getElementById('score');
+  const linesEl = document.getElementById('lines');
+  const levelEl = document.getElementById('level');
+  const nextLetterEl = document.getElementById('nextLetter');
+  const pauseBtn = document.getElementById('pauseBtn');
+
+  // Each piece is a letter of LEONARDO, drawn as a pixel-block glyph on a
+  // 5 (wide) x 6 (tall) grid. Only 7 unique letters are used (O repeats
+  // in the name, so it simply appears twice as often when picked at random).
+  const SHAPES = {
+    L: { w:5, h:6, fill:'#173F2C', cells:[
+      [0,0],[0,1],[0,2],[0,3],[0,4],
+      [0,5],[1,5],[2,5],[3,5],[4,5]
+    ]},
+    E: { w:5, h:6, fill:'#22573C', cells:[
+      [0,0],[1,0],[2,0],[3,0],[4,0],
+      [0,1],
+      [0,2],[1,2],[2,2],[3,2],
+      [0,3],
+      [0,4],
+      [0,5],[1,5],[2,5],[3,5],[4,5]
+    ]},
+    O: { w:5, h:6, fill:'#2F7350', cells:[
+      [1,0],[2,0],[3,0],
+      [0,1],[4,1],
+      [0,2],[4,2],
+      [0,3],[4,3],
+      [0,4],[4,4],
+      [1,5],[2,5],[3,5]
+    ]},
+    N: { w:5, h:6, fill:'#3F9468', cells:[
+      [0,0],[4,0],
+      [0,1],[1,1],[4,1],
+      [0,2],[2,2],[4,2],
+      [0,3],[3,3],[4,3],
+      [0,4],[4,4],
+      [0,5],[4,5]
+    ]},
+    A: { w:5, h:6, fill:'#5CB588', cells:[
+      [1,0],[2,0],[3,0],
+      [0,1],[4,1],
+      [0,2],[4,2],
+      [0,3],[1,3],[2,3],[3,3],[4,3],
+      [0,4],[4,4],
+      [0,5],[4,5]
+    ]},
+    R: { w:5, h:6, fill:'#87D2AA', cells:[
+      [0,0],[1,0],[2,0],[3,0],
+      [0,1],[4,1],
+      [0,2],[1,2],[2,2],[3,2],
+      [0,3],[2,3],
+      [0,4],[3,4],
+      [0,5],[4,5]
+    ]},
+    D: { w:5, h:6, fill:'#C3ECD3', cells:[
+      [0,0],[1,0],[2,0],[3,0],
+      [0,1],[4,1],
+      [0,2],[4,2],
+      [0,3],[4,3],
+      [0,4],[4,4],
+      [0,5],[1,5],[2,5],[3,5]
+    ]},
+  };
+  const KEYS = Object.keys(SHAPES);
+
+  let grid, current, next, pos, rot;
+  let score=0, lines=0, level=1;
+  let dropInterval=900, dropTimer=0, lastTime=0;
+  let running=false, paused=false, gameOver=false;
+  let rafId=null;
+
+  function emptyGrid(){ return Array.from({length:ROWS}, ()=>Array(COLS).fill(null)); }
+  function randomKey(){ return KEYS[Math.floor(Math.random()*KEYS.length)]; }
+  function newPiece(key){ return { key }; }
+
+  // Rotate a cell list 90deg clockwise around its own w x h bounding box.
+  function rotate90(cells, w, h){
+    return { cells: cells.map(([x,y]) => [ h-1-y, x ]), w:h, h:w };
+  }
+
+  function shapeAt(key, rotation){
+    let s = SHAPES[key];
+    let cells = s.cells, w = s.w, h = s.h;
+    const n = ((rotation % 4) + 4) % 4;
+    for(let i=0;i<n;i++){
+      const r = rotate90(cells, w, h);
+      cells = r.cells; w = r.w; h = r.h;
+    }
+    return { cells, w, h };
+  }
+
+  function spawn(){
+    current = next || newPiece(randomKey());
+    next = newPiece(randomKey());
+    rot = 0;
+    pos = { x:2, y:-1 };
+    if(collides(current.key, rot, pos)) endGame();
+    drawNext();
+  }
+
+  function collides(key, rotation, testPos){
+    const { cells } = shapeAt(key, rotation);
+    for(const [cx,cy] of cells){
+      const x = testPos.x + cx;
+      const y = testPos.y + cy;
+      if(x<0 || x>=COLS || y>=ROWS) return true;
+      if(y>=0 && grid[y][x]) return true;
+    }
+    return false;
+  }
+
+  function lockPiece(){
+    const { cells } = shapeAt(current.key, rot);
+    for(const [cx,cy] of cells){
+      const x = pos.x+cx, y = pos.y+cy;
+      if(y>=0) grid[y][x] = current.key;
+    }
+    clearLines();
+    spawn();
+  }
+
+  function clearLines(){
+    let cleared = 0;
+    for(let y=ROWS-1; y>=0; y--){
+      if(grid[y].every(cell=>cell)){
+        grid.splice(y,1);
+        grid.unshift(Array(COLS).fill(null));
+        cleared++;
+        y++;
+      }
+    }
+    if(cleared>0){
+      const points = [0,100,300,500,800][cleared] * level;
+      score += points;
+      lines += cleared;
+      level = 1 + Math.floor(lines/10);
+      dropInterval = Math.max(160, 900 - (level-1)*60);
+      updateHud();
+    }
+  }
+
+  function updateHud(){
+    scoreEl.textContent = score;
+    linesEl.textContent = lines;
+    levelEl.textContent = level;
+  }
+
+  function move(dx){
+    const testPos = { x:pos.x+dx, y:pos.y };
+    if(!collides(current.key, rot, testPos)) pos = testPos;
+  }
+
+  function softDrop(){
+    const testPos = { x:pos.x, y:pos.y+1 };
+    if(!collides(current.key, rot, testPos)){
+      pos = testPos;
+      dropTimer = 0;
+      return true;
+    } else {
+      lockPiece();
+      return false;
+    }
+  }
+
+  function hardDrop(){
+    while(!collides(current.key, rot, {x:pos.x, y:pos.y+1})){
+      pos = {x:pos.x, y:pos.y+1};
+      score += 2;
+    }
+    lockPiece();
+    updateHud();
+  }
+
+  function rotatePiece(){
+    const newRot = (rot+1)%4;
+    const kicks = [0,-1,1,-2,2,-3,3];
+    for(const k of kicks){
+      const testPos = {x:pos.x+k, y:pos.y};
+      if(!collides(current.key, newRot, testPos)){
+        rot = newRot;
+        pos = testPos;
+        return;
+      }
+    }
+  }
+
+  function drawCell(c, x, y, size, key){
+    const fill = SHAPES[key].fill;
+    const px = x*size, py = y*size;
+    c.fillStyle = fill;
+    c.fillRect(px, py, size, size);
+    c.fillStyle = 'rgba(255,255,255,0.14)';
+    c.fillRect(px, py, size, 2);
+    c.strokeStyle = 'rgba(7,19,13,0.55)';
+    c.lineWidth = 1;
+    c.strokeRect(px+0.5, py+0.5, size-1, size-1);
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,canvas.width, canvas.height);
+    ctx.strokeStyle = 'rgba(183,228,199,0.045)';
+    for(let x=0;x<=COLS;x++){ ctx.beginPath(); ctx.moveTo(x*CELL,0); ctx.lineTo(x*CELL, ROWS*CELL); ctx.stroke(); }
+    for(let y=0;y<=ROWS;y++){ ctx.beginPath(); ctx.moveTo(0,y*CELL); ctx.lineTo(COLS*CELL, y*CELL); ctx.stroke(); }
+
+    for(let y=0;y<ROWS;y++){
+      for(let x=0;x<COLS;x++){
+        if(grid[y][x]) drawCell(ctx, x, y, CELL, grid[y][x]);
+      }
+    }
+
+    if(current){
+      const { cells } = shapeAt(current.key, rot);
+      let ghostY = pos.y;
+      while(!collides(current.key, rot, {x:pos.x, y:ghostY+1})) ghostY++;
+      ctx.globalAlpha = 0.20;
+      for(const [cx,cy] of cells){
+        const gy = ghostY+cy;
+        if(gy>=0) drawCell(ctx, pos.x+cx, gy, CELL, current.key);
+      }
+      ctx.globalAlpha = 1;
+      for(const [cx,cy] of cells){
+        const y = pos.y+cy;
+        if(y>=0) drawCell(ctx, pos.x+cx, y, CELL, current.key);
+      }
+    }
+  }
+
+  function drawNext(){
+    nctx.clearRect(0,0,nextCanvas.width, nextCanvas.height);
+    if(!next) return;
+    nextLetterEl.textContent = next.key;
+    const s = SHAPES[next.key];
+    const size = 15;
+    const offX = (nextCanvas.width - s.w*size)/2;
+    const offY = (nextCanvas.height - s.h*size)/2;
+    for(const [cx,cy] of s.cells){
+      const px = offX+cx*size, py = offY+cy*size;
+      nctx.fillStyle = s.fill;
+      nctx.fillRect(px,py,size,size);
+      nctx.fillStyle = 'rgba(255,255,255,0.14)';
+      nctx.fillRect(px,py,size,2);
+      nctx.strokeStyle = 'rgba(7,19,13,0.55)';
+      nctx.strokeRect(px+0.5,py+0.5,size-1,size-1);
+    }
+  }
+
+  function loop(time){
+    if(!running || paused) return;
+    const delta = time - lastTime;
+    lastTime = time;
+    dropTimer += delta;
+    if(dropTimer > dropInterval){ softDrop(); dropTimer = 0; }
+    draw();
+    rafId = requestAnimationFrame(loop);
+  }
+
+  function startGame(){
+    grid = emptyGrid();
+    score=0; lines=0; level=1; dropInterval=900; dropTimer=0;
+    updateHud();
+    next = newPiece(randomKey());
+    spawn();
+    running = true; paused = false; gameOver = false;
+    overlay.classList.add('hidden');
+    lastTime = performance.now();
+    cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(loop);
+  }
+
+  function endGame(){
+    running = false; gameOver = true;
+    overlayTitle.textContent = 'Nombre incompleto';
+    overlayText.textContent = `Puntuación final: ${score} · Líneas: ${lines}`;
+    overlayBtn.textContent = 'Reintentar';
+    overlay.classList.remove('hidden');
+    draw();
+  }
+
+  function togglePause(){
+    if(!running && !gameOver) return;
+    if(gameOver) return;
+    paused = !paused;
+    if(paused){
+      overlayTitle.textContent = 'En pausa';
+      overlayText.textContent = 'Pulsa P o el botón para continuar.';
+      overlayBtn.textContent = 'Continuar';
+      overlay.classList.remove('hidden');
+    } else {
+      overlay.classList.add('hidden');
+      lastTime = performance.now();
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(loop);
+    }
+  }
+
+  overlayBtn.addEventListener('click', ()=>{
+    if(paused){ togglePause(); return; }
+    startGame();
+  });
+  pauseBtn.addEventListener('click', togglePause);
+
+  document.addEventListener('keydown', (e)=>{
+    if(e.code === 'KeyP'){ togglePause(); return; }
+    if(!running || paused) return;
+    switch(e.code){
+      case 'ArrowLeft': move(-1); break;
+      case 'ArrowRight': move(1); break;
+      case 'ArrowDown': softDrop(); break;
+      case 'ArrowUp': rotatePiece(); break;
+      case 'Space': e.preventDefault(); hardDrop(); break;
+      default: return;
+    }
+    draw();
+  });
+
+  // On-screen arrow pad — works with mouse clicks and touch, with
+  // press-and-hold repeat for left/right/down like a real keyboard.
+  // Tapping any pad button also starts the game if it hasn't started yet,
+  // so touch players don't have to hunt for the small "Empezar" button.
+  function pressAction(fn){
+    if(paused) return;
+    if(!running){
+      if(gameOver) return;
+      startGame();
+    }
+    fn();
+    draw();
+  }
+
+  function bindPad(id, fn, repeat){
+    const el = document.getElementById(id);
+    let repeatTimer = null, initialTimer = null;
+
+    const start = (e)=>{
+      e.preventDefault();
+      if(el.setPointerCapture && e.pointerId !== undefined){
+        try{ el.setPointerCapture(e.pointerId); }catch(err){}
+      }
+      pressAction(fn);
+      if(repeat){
+        initialTimer = setTimeout(()=>{
+          repeatTimer = setInterval(()=>pressAction(fn), 60);
+        }, 220);
+      }
+    };
+    const stop = ()=>{
+      clearTimeout(initialTimer);
+      clearInterval(repeatTimer);
+    };
+
+    if(window.PointerEvent){
+      el.addEventListener('pointerdown', start);
+      ['pointerup','pointerleave','pointercancel'].forEach(evt=>{
+        el.addEventListener(evt, stop);
+      });
+    } else {
+      el.addEventListener('mousedown', start);
+      el.addEventListener('touchstart', start, { passive:false });
+      ['mouseup','mouseleave','touchend','touchcancel'].forEach(evt=>{
+        el.addEventListener(evt, stop);
+      });
+    }
+  }
+
+  bindPad('btnLeft', ()=>move(-1), true);
+  bindPad('btnRight', ()=>move(1), true);
+  bindPad('btnDown', ()=>softDrop(), true);
+  bindPad('btnRotate', ()=>rotatePiece(), false);
+  bindPad('btnDrop', ()=>hardDrop(), false);
+
+  // initial paint behind the start overlay
+  grid = emptyGrid();
+  next = newPiece(randomKey());
+  draw();
+  drawNext();
+})();
+</script>
+</body>
+</html>
